@@ -38,7 +38,7 @@ The solution combines Amazon Bedrock, Amazon Athena, AWS Lake Formation, AWS STS
 
 | Capability | Implementation |
 |---|---|
-| Natural-language analytics | Bedrock Claude Haiku generates SQL from questions and semantic context |
+| Natural-language analytics | Amazon Bedrock LLM generates SQL from questions and semantic context |
 | Governed query execution | SQLGlot AST validation, SELECT-only policy, table allowlist |
 | Fine-grained authorization | STS persona roles and Lake Formation column/row controls |
 | Open lakehouse | Apache Iceberg v2 and Parquet in S3, queried through Athena Engine v3 |
@@ -89,7 +89,7 @@ flowchart TD
 
 | Service | Purpose |
 |---|---|
-| Amazon Bedrock | Claude Haiku model for NL-to-SQL generation |
+| Amazon Bedrock | Foundation model for NL-to-SQL generation |
 | Amazon Athena | Engine v3 SQL execution over Iceberg tables |
 | Amazon S3 + Apache Iceberg | Silver and semantic data storage |
 | AWS Lake Formation | Governed table, column, and row access |
@@ -175,7 +175,7 @@ Local defaults: FastAPI on port `8000`; Streamlit on port `8501`. The deployment
 ### Example `.env`
 
 ```dotenv
-BEDROCK_MODEL_ID=us.anthropic.claude-haiku-4-5-20251001-v1:0
+BEDROCK_MODEL_ID=<your-bedrock-model-id>
 AWS_REGION=us-east-1
 AWS_PROFILE=default
 CONNECTOR_HOST=0.0.0.0
@@ -374,7 +374,7 @@ yumburger/
 | API / UI | FastAPI, Uvicorn, Streamlit 1.59 |
 | Lakehouse | Apache Iceberg v2, Parquet, S3 |
 | SQL engine | Amazon Athena Engine v3 (Trino dialect) |
-| AI | Amazon Bedrock / Claude Haiku |
+| AI | Amazon Bedrock LLM |
 | SQL safety | SQLGlot |
 | Semantic modeling | OWL/SKOS, RDFLib |
 | Configuration | Pydantic Settings v2 |
@@ -392,7 +392,7 @@ Rough POC estimates for `us-east-1`:
 |---|---|
 | ECS Fargate (API and UI) | $10–15 |
 | Athena | $1–2 |
-| Bedrock Claude Haiku | $1–3 |
+| Bedrock LLM | $1–3 |
 | ALB, ECR, DynamoDB, S3 | $2 |
 | **Range** | **$14–22** |
 
