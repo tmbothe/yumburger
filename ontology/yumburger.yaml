@@ -1,0 +1,166 @@
+# YumBurger Ontology — OWL/SKOS classes and properties
+# Namespace: https://yumburger.com/ontology#
+
+ontology:
+  prefix: "yumburger"
+  namespace: "https://yumburger.com/ontology#"
+  version: "1.0.0"
+  label: "YumBurger Restaurant Ontology"
+  description: "Semantic model for YumBurger restaurant operations, menu, suppliers, and customers"
+
+classes:
+  - uri: "yumburger:MenuItem"
+    label: "Menu Item"
+    comment: "A food or beverage item sold at YumBurger"
+    maps_to_table: "menu_item"
+    nl_terms: ["item", "food", "meal", "product", "burger", "drink", "side", "dessert"]
+
+  - uri: "yumburger:Supplier"
+    label: "Supplier"
+    comment: "A company that supplies ingredients or packaging to YumBurger"
+    maps_to_table: "supplier"
+    nl_terms: ["supplier", "vendor", "provider", "partner"]
+
+  - uri: "yumburger:Customer"
+    label: "Customer"
+    comment: "A loyalty program member"
+    maps_to_table: "customer"
+    nl_terms: ["customer", "member", "guest", "loyalty member", "patron"]
+
+  - uri: "yumburger:Order"
+    label: "Order"
+    comment: "A transaction representing a customer purchase"
+    maps_to_table: "order"
+    nl_terms: ["order", "purchase", "transaction", "sale"]
+
+  - uri: "yumburger:OrderLine"
+    label: "Order Line"
+    comment: "A single item within an order"
+    maps_to_table: "order_line"
+    nl_terms: ["order line", "line item", "item ordered"]
+
+  - uri: "yumburger:Location"
+    label: "Restaurant Location"
+    comment: "A physical YumBurger restaurant location"
+    maps_to_table: null
+    nl_terms: ["location", "restaurant", "store", "outlet"]
+
+  - uri: "yumburger:Region"
+    label: "Geographic Region"
+    comment: "A US geographic region (Northeast, Southeast, Midwest, Southwest, West, Northwest)"
+    maps_to_table: null
+    nl_terms: ["region", "area", "zone", "territory"]
+
+properties:
+  # MenuItem properties
+  - uri: "yumburger:hasPrice"
+    label: "has price"
+    comment: "The price of a menu item in USD"
+    domain: "yumburger:MenuItem"
+    range: "xsd:double"
+    maps_to_column: "menu_item.price_usd"
+    nl_terms: ["price", "cost", "how much", "value"]
+
+  - uri: "yumburger:hasCalories"
+    label: "has calories"
+    comment: "Calorie count of a menu item"
+    domain: "yumburger:MenuItem"
+    range: "xsd:integer"
+    maps_to_column: "menu_item.calories"
+    nl_terms: ["calories", "caloric content", "nutrition"]
+
+  - uri: "yumburger:hasCategory"
+    label: "has category"
+    comment: "Category of a menu item (Burger, Chicken, etc.)"
+    domain: "yumburger:MenuItem"
+    range: "xsd:string"
+    maps_to_column: "menu_item.category"
+    nl_terms: ["category", "type", "kind", "section"]
+
+  - uri: "yumburger:isAvailable"
+    label: "is available"
+    comment: "Whether a menu item is currently available"
+    domain: "yumburger:MenuItem"
+    range: "xsd:boolean"
+    maps_to_column: "menu_item.is_available"
+    nl_terms: ["available", "in stock", "offered"]
+
+  # Supplier properties
+  - uri: "yumburger:suppliesCategory"
+    label: "supplies category"
+    comment: "The supply category a supplier provides"
+    domain: "yumburger:Supplier"
+    range: "xsd:string"
+    maps_to_column: "supplier.category"
+    nl_terms: ["supply type", "what they supply", "category"]
+
+  - uri: "yumburger:hasAnnualSpend"
+    label: "has annual spend"
+    comment: "Estimated annual spend with this supplier in USD"
+    domain: "yumburger:Supplier"
+    range: "xsd:double"
+    maps_to_column: "supplier.annual_spend_usd"
+    nl_terms: ["annual spend", "spending", "cost", "contract value"]
+
+  # Customer properties
+  - uri: "yumburger:hasLoyaltyTier"
+    label: "has loyalty tier"
+    comment: "Customer loyalty tier (Bronze, Silver, Gold, Platinum)"
+    domain: "yumburger:Customer"
+    range: "xsd:string"
+    maps_to_column: "customer.tier"
+    nl_terms: ["tier", "loyalty level", "membership level", "status"]
+
+  - uri: "yumburger:hasLifetimeSpend"
+    label: "has lifetime spend"
+    comment: "Total lifetime spend by a customer in USD"
+    domain: "yumburger:Customer"
+    range: "xsd:double"
+    maps_to_column: "customer.lifetime_spend_usd"
+    nl_terms: ["lifetime spend", "total spent", "lifetime value", "LTV"]
+
+  # Order properties
+  - uri: "yumburger:placedBy"
+    label: "placed by"
+    comment: "The customer who placed an order"
+    domain: "yumburger:Order"
+    range: "yumburger:Customer"
+    maps_to_column: "order.customer_id"
+    nl_terms: ["placed by", "customer", "ordered by"]
+
+  - uri: "yumburger:hasOrderTotal"
+    label: "has order total"
+    comment: "Total value of an order in USD"
+    domain: "yumburger:Order"
+    range: "xsd:double"
+    maps_to_column: "order.total_usd"
+    nl_terms: ["order total", "total", "amount", "value"]
+
+  - uri: "yumburger:hasChannel"
+    label: "has channel"
+    comment: "The order channel (In-Store, Drive-Through, Mobile App, Delivery)"
+    domain: "yumburger:Order"
+    range: "xsd:string"
+    maps_to_column: "order.channel"
+    nl_terms: ["channel", "how ordered", "ordering method"]
+
+  - uri: "yumburger:containsItem"
+    label: "contains item"
+    comment: "A menu item included in an order"
+    domain: "yumburger:Order"
+    range: "yumburger:MenuItem"
+    maps_to_column: "order_line.item_id"
+    nl_terms: ["contains", "includes", "has item"]
+
+nl_to_sql_hints:
+  # Common natural language patterns to SQL mappings
+  - nl_pattern: "top N {entity} by {metric}"
+    sql_template: "SELECT {cols} FROM {table} ORDER BY {metric} DESC LIMIT {n}"
+  - nl_pattern: "how many {entity}"
+    sql_template: "SELECT COUNT(*) FROM {table}"
+  - nl_pattern: "average {metric} per {entity}"
+    sql_template: "SELECT {group_col}, AVG({metric_col}) FROM {table} GROUP BY {group_col}"
+  - nl_pattern: "total {metric} by {dimension}"
+    sql_template: "SELECT {dim_col}, SUM({metric_col}) FROM {table} GROUP BY {dim_col}"
+  - nl_pattern: "{entity} in region {region}"
+    sql_template: "SELECT * FROM {table} WHERE region = '{region}'"

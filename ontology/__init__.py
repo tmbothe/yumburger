@@ -1,0 +1,1 @@
+"""YumBurger ontology module."""

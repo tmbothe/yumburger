@@ -1,0 +1,68 @@
+# YumBurger — Project Settings
+# Non-secret configuration. Secrets go in .env
+
+project:
+  prefix: yumBurger
+  owner: mbothe7@gmail.com
+  env: poc
+  region: us-east-1
+  account_id: "442042510197"
+
+data_scale: small
+
+# Row count targets per scale
+row_targets:
+  small:
+    supplier: 50
+    menu_item: 30
+    customer: 500
+    order: 2000
+    order_line: 6000
+
+s3:
+  raw_bucket: yumburger-raw-442042510197
+  silver_bucket: yumburger-silver-442042510197
+  semantic_bucket: yumburger-semantic-442042510197
+  athena_results_bucket: yumburger-athena-results-442042510197
+  audit_bucket: yumburger-audit-logs-442042510197
+  silver_prefix: silver/
+  semantic_prefix: semantic/
+
+athena:
+  workgroup: yumBurger-wg
+  silver_database: yumburger_silver
+  semantic_database: yumburger_semantic
+  query_timeout_seconds: 60
+
+dynamodb:
+  audit_table: yumBurger-audit
+
+iam:
+  connector_runtime_role: yumBurger-connector-runtime
+  persona_analyst_role: yumBurger-persona-analyst
+  persona_admin_role: yumBurger-persona-admin
+
+lakeformation:
+  data_lake_admin: mbothe7@gmail.com
+
+budget:
+  monthly_limit_usd: 50
+
+tags:
+  project: yumBurger
+  owner: mbothe7@gmail.com
+  env: poc
+
+# Ontology tables in yumburger_semantic
+semantic_tables:
+  - ontology_class
+  - ontology_property
+  - ontology_mapping
+
+# Allowed tables for query compiler whitelist
+allowed_query_tables:
+  - supplier
+  - menu_item
+  - customer
+  - order
+  - order_line

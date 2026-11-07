@@ -1,0 +1,75 @@
+# YumBurger — Golden Question Set
+# These questions are used to validate end-to-end NL→SQL→Athena pipeline.
+# Each question has an expected SQL pattern and expected result constraints.
+
+questions:
+  - id: G001
+    question: "How many menu items do we have?"
+    expected_tables: [menu_item]
+    expected_sql_pattern: "COUNT"
+    expected_row_count: 1
+    expected_result_constraint: "count >= 1"
+    persona: analyst
+
+  - id: G002
+    question: "What are the top 5 most expensive menu items?"
+    expected_tables: [menu_item]
+    expected_sql_pattern: "ORDER BY.*price.*DESC"
+    expected_row_count: 5
+    persona: analyst
+
+  - id: G003
+    question: "Which menu category has the most items?"
+    expected_tables: [menu_item]
+    expected_sql_pattern: "GROUP BY.*category"
+    expected_row_count_min: 1
+    persona: analyst
+
+  - id: G004
+    question: "How many customers are in each loyalty tier?"
+    expected_tables: [customer]
+    expected_sql_pattern: "GROUP BY.*tier"
+    expected_row_count: 4  # Bronze, Silver, Gold, Platinum
+    persona: admin
+
+  - id: G005
+    question: "What is the total revenue by region?"
+    expected_tables: [order]
+    expected_sql_pattern: "SUM.*total_usd.*GROUP BY.*region"
+    expected_row_count_min: 1
+    persona: admin
+
+  - id: G006
+    question: "Which suppliers are in the Northeast region?"
+    expected_tables: [supplier]
+    expected_sql_pattern: "region.*Northeast|Northeast.*region"
+    expected_row_count_min: 1
+    persona: analyst
+
+  - id: G007
+    question: "What is the average order value by channel?"
+    expected_tables: [order]
+    expected_sql_pattern: "AVG.*total_usd.*GROUP BY.*channel"
+    expected_row_count_min: 1
+    persona: analyst
+
+  - id: G008
+    question: "Show me the top 10 customers by lifetime spend"
+    expected_tables: [customer]
+    expected_sql_pattern: "ORDER BY.*lifetime_spend.*DESC"
+    expected_row_count: 10
+    persona: admin
+
+  - id: G009
+    question: "How many active suppliers do we have?"
+    expected_tables: [supplier]
+    expected_sql_pattern: "COUNT.*active.*true|WHERE.*active"
+    expected_row_count: 1
+    persona: analyst
+
+  - id: G010
+    question: "What menu items contain gluten?"
+    expected_tables: [menu_item]
+    expected_sql_pattern: "allergens.*[Gg]luten"
+    expected_row_count_min: 1
+    persona: analyst

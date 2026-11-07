@@ -1,0 +1,1 @@
+"""YumBurger Federated Semantic Connector."""

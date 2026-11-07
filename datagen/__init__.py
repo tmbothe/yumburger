@@ -1,0 +1,1 @@
+"""YumBurger synthetic data generator."""
