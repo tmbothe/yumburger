@@ -17,6 +17,23 @@
 
 ---
 
+## What Is This?
+
+**YumBurger Analytics** is a proof-of-concept for a modern, AI-powered data platform built for a fast-food restaurant chain modelled after McDonald's. It demonstrates how a business analyst — with no SQL knowledge — can ask questions like _"Who are our top customers this month?"_ or _"Which menu items contain gluten?"_ and receive accurate, real-time answers drawn directly from a governed data lake.
+
+The project covers the **full data engineering stack**, end-to-end:
+
+- **Synthetic data generation** — 7,600+ realistic rows across 5 business entities (suppliers, menu items, customers, orders, order lines)
+- **Apache Iceberg data lake** — ACID-compliant table format on Amazon S3, queryable exclusively through Amazon Athena
+- **Semantic ontology** — OWL/SKOS knowledge graph with 74 natural-language-to-SQL term mappings, enabling the AI to understand business intent
+- **Governed NL→SQL pipeline** — Natural language questions compiled to SQL by Amazon Bedrock (Claude Haiku), verified by an AST safety engine, then executed as a persona-scoped IAM role under Lake Formation column and row-level policies
+- **Audit trail** — Every query is pre- and post-audited in DynamoDB with hashed question text and 90-day TTL
+- **REST API + Streamlit UI** — A FastAPI connector service and Streamlit analytics dashboard, deployed on AWS ECS Fargate with a public ALB endpoint
+
+> **Key invariant:** LLM-generated SQL is **never** executed directly. Only AST-verified, allowlist-checked SQL reaches Athena.
+
+---
+
 ## Overview
 
 YumBurger Analytics is a production-grade **Federated Semantic Connector** that translates plain-English business questions into governed SQL queries against an Apache Iceberg data lake on AWS. Every query is compiler-verified, persona-scoped, and audit-logged.
