@@ -175,7 +175,7 @@ Local defaults: FastAPI on port `8000`; Streamlit on port `8501`. The deployment
 ### Example `.env`
 
 ```dotenv
-BEDROCK_MODEL_ID=<your-bedrock-model-id>
+BEDROCK_MODEL_ID=us.anthropic.claude-haiku-4-5-20251001-v1:0
 AWS_REGION=us-east-1
 AWS_PROFILE=default
 CONNECTOR_HOST=0.0.0.0
@@ -374,7 +374,7 @@ yumburger/
 | API / UI | FastAPI, Uvicorn, Streamlit 1.59 |
 | Lakehouse | Apache Iceberg v2, Parquet, S3 |
 | SQL engine | Amazon Athena Engine v3 (Trino dialect) |
-| AI | Amazon Bedrock LLM |
+| AI | Amazon Bedrock / Claude Haiku |
 | SQL safety | SQLGlot |
 | Semantic modeling | OWL/SKOS, RDFLib |
 | Configuration | Pydantic Settings v2 |
@@ -392,7 +392,7 @@ Rough POC estimates for `us-east-1`:
 |---|---|
 | ECS Fargate (API and UI) | $10–15 |
 | Athena | $1–2 |
-| Bedrock LLM | $1–3 |
+| Bedrock Claude Haiku | $1–3 |
 | ALB, ECR, DynamoDB, S3 | $2 |
 | **Range** | **$14–22** |
 
