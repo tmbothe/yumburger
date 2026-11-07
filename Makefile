@@ -128,6 +128,18 @@ sync:
 	@echo "==> Syncing metadata + ontology to Redshift..."
 	$(PYTHON) scripts/sync_redshift.py
 
+sync-bodhi:
+	@echo "==> Incremental Bodhi sync: metadata + ontology → S3..."
+	$(PYTHON) scripts/sync_bodhi.py
+
+sync-bodhi-force:
+	@echo "==> Force full Bodhi sync: metadata + ontology → S3..."
+	$(PYTHON) scripts/sync_bodhi.py --force
+
+sync-bodhi-dry:
+	@echo "==> Bodhi sync dry run (no S3 writes)..."
+	$(PYTHON) scripts/sync_bodhi.py --dry-run
+
 ## ── Connector Service ────────────────────────────────────────────────────────
 
 serve:
