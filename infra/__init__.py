@@ -1,0 +1,1 @@
+"""YumBurger CDK infrastructure."""
