@@ -93,9 +93,29 @@ class AthenaEngine:
         return rows
 
     def describe_table(self, table: str, database: str | None = None) -> list[dict[str, Any]]:
-        """Return column descriptions for a table."""
+        """Return column descriptions for a table as {col_name, data_type, comment} dicts.
+
+        Athena DESCRIBE on Iceberg tables returns single-column tab-separated rows.
+        This method normalises them into structured dicts.
+        """
         db = database or settings.silver_db
-        return self.execute(f"DESCRIBE {db}.{table}", database=db)
+        raw = self.execute(f"DESCRIBE {db}.{table}", database=db)
+        # Raw rows look like: {"# Table schema:\t\t": "customer_id\tstring\tUUID primary key"}
+        # The key is irrelevant; the value is tab-separated col_name, data_type, comment.
+        result = []
+        for row in raw:
+            value = next(iter(row.values()), "") or ""
+            parts = value.split("\t")
+            col_name = parts[0].strip()
+            # Skip blank lines and Iceberg section headers (start with #)
+            if not col_name or col_name.startswith("#"):
+                continue
+            result.append({
+                "col_name": col_name,
+                "data_type": parts[1].strip() if len(parts) > 1 else "",
+                "comment": parts[2].strip() if len(parts) > 2 else "",
+            })
+        return result
 
     def show_snapshots(self, table: str, database: str | None = None) -> list[dict[str, Any]]:
         """Return Iceberg snapshot history for a table."""

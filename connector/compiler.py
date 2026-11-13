@@ -60,6 +60,19 @@ class SQLVerifier:
     def __init__(self, allowed_tables: list[str], allowed_database: str) -> None:
         self._allowed_tables = {t.lower() for t in allowed_tables}
         self._allowed_db = allowed_database.lower()
+        self._valid_columns: set[str] = set()
+        self._schema_columns: dict[str, set[str]] = {}
+
+    def update_schema(self, schema_context: dict[str, list[dict]]) -> None:
+        """Build per-table and flat column sets from schema_context."""
+        self._schema_columns: dict[str, set[str]] = {}
+        for table, cols in schema_context.items():
+            self._schema_columns[table.lower()] = {
+                row["col_name"].lower()
+                for row in cols
+                if row.get("col_name") and not row["col_name"].startswith("#")
+            }
+        self._valid_columns = {c for cols in self._schema_columns.values() for c in cols}
 
     def verify(self, sql: str) -> str:
         """
@@ -87,6 +100,33 @@ class SQLVerifier:
             table_name = table.name.lower()
             if table_name and table_name not in self._allowed_tables:
                 raise CompilerError(f"Table not in allowlist: {table_name}")
+
+        # Validate column names against schema using alias-aware per-table lookup
+        if self._valid_columns:
+            # Build alias → table name mapping from FROM / JOIN clauses
+            alias_to_table: dict[str, str] = {}
+            for tbl_expr in parsed.find_all(exp.Table):
+                tbl_name = tbl_expr.name.lower()
+                alias = (tbl_expr.alias or tbl_name).lower()
+                alias_to_table[alias] = tbl_name
+
+            for col in parsed.find_all(exp.Column):
+                col_name = col.name.lower()
+                if not col_name or col_name == "*":
+                    continue
+                tbl_alias = col.table.lower() if col.table else None
+                if tbl_alias and tbl_alias in alias_to_table:
+                    tbl = alias_to_table[tbl_alias]
+                    valid = self._schema_columns.get(tbl, set())
+                    if valid and col_name not in valid:
+                        raise CompilerError(
+                            f"Column '{col_name}' does not exist in table '{tbl}'. "
+                            f"Valid columns: {sorted(valid)}"
+                        )
+                elif col_name not in self._valid_columns:
+                    raise CompilerError(
+                        f"Column '{col_name}' does not exist in any allowed table."
+                    )
 
         needs_limit = not parsed.find(exp.Limit)
 
@@ -163,6 +203,9 @@ class NLToSQLCompiler:
         raw_sql = re.sub(r"```sql\s*", "", raw_sql, flags=re.IGNORECASE)
         raw_sql = re.sub(r"```\s*", "", raw_sql)
         raw_sql = raw_sql.strip()
+
+        # Load schema into verifier so column names can be validated
+        self._verifier.update_schema(schema_context)
 
         # Verify
         verified_sql = self._verifier.verify(raw_sql)
