@@ -36,6 +36,7 @@ athena:
 
 dynamodb:
   audit_table: yumBurger-audit
+  memory_table: yumBurger-conversation
 
 iam:
   connector_runtime_role: yumBurger-connector-runtime

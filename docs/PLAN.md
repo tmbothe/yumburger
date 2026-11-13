@@ -140,3 +140,11 @@ Budget alert fires at $50/month.
 | 6 | Connector: FastAPI + all planes | `make serve` |
 | 7 | Tests + Bodhi sim | `make test && make golden` |
 | 8 | Demo + Runbook | `make demo` |
+
+
+What was retained (safe, no cost):
+  - Silver + semantic S3 buckets — your Iceberg data is intact
+  - yumBurger-audit DynamoDB table — retained by policy
+
+  When you're ready to redeploy, just run:
+  cd C:/DataEngineer/YumBurger/infra && cdk deploy --all --require-approval never

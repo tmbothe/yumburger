@@ -57,6 +57,10 @@ class ConnectorSettings(BaseSettings):
         return _YAML["dynamodb"]["audit_table"]
 
     @property
+    def memory_table(self) -> str:
+        return _YAML["dynamodb"]["memory_table"]
+
+    @property
     def athena_results_bucket(self) -> str:
         return _YAML["s3"]["athena_results_bucket"]
 

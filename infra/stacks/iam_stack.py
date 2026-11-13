@@ -33,8 +33,9 @@ class IAMStack(cdk.Stack):
             "ConnectorRuntimeRole",
             role_name=IAM_CFG["connector_runtime_role"],
             assumed_by=iam.CompositePrincipal(
-                iam.AccountPrincipal(ACCOUNT_ID),                      # local dev / bedrock-user
-                iam.ServicePrincipal("ecs-tasks.amazonaws.com"),        # ECS Fargate
+                iam.AccountPrincipal(ACCOUNT_ID),                       # local dev / bedrock-user
+                iam.ServicePrincipal("ecs-tasks.amazonaws.com"),         # ECS Fargate (kept for compat)
+                iam.ServicePrincipal("tasks.apprunner.amazonaws.com"),   # App Runner
             ),
             description="YumBurger connector service runtime role",
         )
@@ -88,14 +89,17 @@ class IAMStack(cdk.Stack):
             )
         )
 
-        # Allow DynamoDB audit writes
+        # Allow DynamoDB audit writes + conversation memory reads/writes
         self.connector_runtime_role.add_to_policy(
             iam.PolicyStatement(
                 sid="AllowDynamoDBAudit",
                 effect=iam.Effect.ALLOW,
-                actions=["dynamodb:PutItem", "dynamodb:GetItem"],
+                actions=["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:Query", "dynamodb:DeleteItem"],
                 resources=[
-                    f"arn:aws:dynamodb:{REGION}:{ACCOUNT_ID}:table/yumBurger-audit"
+                    f"arn:aws:dynamodb:{REGION}:{ACCOUNT_ID}:table/yumBurger-audit",
+                    f"arn:aws:dynamodb:{REGION}:{ACCOUNT_ID}:table/yumBurger-audit/index/*",
+                    f"arn:aws:dynamodb:{REGION}:{ACCOUNT_ID}:table/yumBurger-conversation",
+                    f"arn:aws:dynamodb:{REGION}:{ACCOUNT_ID}:table/yumBurger-conversation/index/*",
                 ],
             )
         )

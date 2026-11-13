@@ -11,6 +11,10 @@ class QueryRequest(BaseModel):
     question: str = Field(..., min_length=3, max_length=2000, description="Natural language question")
     persona: Literal["analyst", "admin"] = Field(default="analyst")
     max_rows: int = Field(default=100, ge=1, le=1000)
+    session_id: str | None = Field(
+        default=None,
+        description="Conversation session ID. If omitted, a new session is created.",
+    )
 
 
 class QueryResponse(BaseModel):
@@ -48,6 +52,7 @@ class AskResponse(BaseModel):
     compiled_sql: str
     row_count: int
     duration_ms: int
+    session_id: str
 
 
 class HealthResponse(BaseModel):

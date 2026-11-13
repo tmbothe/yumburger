@@ -2,30 +2,42 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install runtime dependencies only (no CDK, dev tools, or datagen)
-RUN pip install --no-cache-dir \
-    fastapi>=0.110.0 \
-    "uvicorn[standard]>=0.29.0" \
-    boto3>=1.34.0 \
-    botocore>=1.34.0 \
-    pydantic>=2.5.0 \
-    pydantic-settings>=2.2.0 \
-    python-dotenv>=1.0.0 \
-    pyyaml>=6.0.1 \
-    sqlglot>=23.0.0 \
-    httpx>=0.27.0 \
-    rich>=13.7.0 \
-    rdflib>=7.0.0
+# System deps: supervisor to run both FastAPI + Streamlit in one container
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    supervisor gcc \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy application code and config
+# Install Python runtime deps (no CDK/dev/datagen)
+RUN pip install --no-cache-dir \
+    "fastapi>=0.110.0" \
+    "uvicorn[standard]>=0.29.0" \
+    "boto3>=1.34.0" \
+    "botocore>=1.34.0" \
+    "pydantic>=2.5.0" \
+    "pydantic-settings>=2.2.0" \
+    "python-dotenv>=1.0.0" \
+    "pyyaml>=6.0.1" \
+    "sqlglot>=23.0.0" \
+    "httpx>=0.27.0" \
+    "pyarrow>=14.0.0" \
+    "pandas>=2.1.0" \
+    "streamlit>=1.35.0" \
+    "requests>=2.31.0"
+
+# Copy application code
 COPY connector/ connector/
 COPY config/ config/
-COPY bodhi_sim/ bodhi_sim/
+COPY app.py .
+COPY assets/ assets/
+COPY supervisord.conf /etc/supervisor/conf.d/yumburger.conf
 
-# Health check — Athena warm-up takes ~30s at startup
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+# Streamlit calls the connector on localhost
+ENV CONNECTOR_URL=http://localhost:8000
 
-EXPOSE 8000
+# App Runner exposes 8501 (Streamlit UI)
+# FastAPI runs internally on 8000
+EXPOSE 8501
 
-CMD ["python", "-m", "connector.main"]
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]

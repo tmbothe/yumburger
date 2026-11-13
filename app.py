@@ -8,8 +8,8 @@ import time
 import requests
 import streamlit as st
 
-# CONNECTOR = "http://localhost:8000"
-CONNECTOR = "http://yumburger-connector-416434018.us-east-1.elb.amazonaws.com"
+import os
+CONNECTOR = os.environ.get("CONNECTOR_URL", "http://localhost:8000")
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(

@@ -1,4 +1,4 @@
-"""DynamoDBStack — Audit log table."""
+"""DynamoDBStack — Audit log table + conversation memory table."""
 
 from __future__ import annotations
 
@@ -38,3 +38,28 @@ class DynamoDBStack(cdk.Stack):
 
         cdk.CfnOutput(self, "AuditTableName", value=self.audit_table.table_name)
         cdk.CfnOutput(self, "AuditTableArn", value=self.audit_table.table_arn)
+
+        # ---- Conversation memory table (session-scoped, TTL = 30 days) ----
+        self.memory_table = dynamodb.Table(
+            self,
+            "MemoryTable",
+            table_name=DYNAMODB["memory_table"],
+            partition_key=dynamodb.Attribute(name="session_id", type=dynamodb.AttributeType.STRING),
+            sort_key=dynamodb.Attribute(name="sk", type=dynamodb.AttributeType.STRING),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=cdk.RemovalPolicy.DESTROY,  # sessions are ephemeral
+            point_in_time_recovery_specification=dynamodb.PointInTimeRecoverySpecification(point_in_time_recovery_enabled=False),
+            time_to_live_attribute="ttl",
+        )
+
+        # GSI: query all sessions for a persona (analytics)
+        self.memory_table.add_global_secondary_index(
+            index_name="persona-ts-index",
+            partition_key=dynamodb.Attribute(name="persona", type=dynamodb.AttributeType.STRING),
+            sort_key=dynamodb.Attribute(name="ts", type=dynamodb.AttributeType.STRING),
+            projection_type=dynamodb.ProjectionType.INCLUDE,
+            non_key_attributes=["session_id", "turn_index", "question"],
+        )
+
+        cdk.CfnOutput(self, "MemoryTableName", value=self.memory_table.table_name)
+        cdk.CfnOutput(self, "MemoryTableArn", value=self.memory_table.table_arn)

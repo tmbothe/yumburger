@@ -31,7 +31,7 @@ settings = get_settings()
 FORBIDDEN_KEYWORDS = {
     "INSERT", "UPDATE", "DELETE", "DROP", "CREATE", "ALTER",
     "TRUNCATE", "GRANT", "REVOKE", "EXEC", "EXECUTE", "MERGE",
-    "CALL", "LOAD", "COPY",
+    "CALL", "LOAD", "COPY", "TOP",
 }
 
 SYSTEM_PROMPT = """You are a SQL query generator for YumBurger restaurant analytics.
@@ -44,6 +44,7 @@ Rules:
 - Limit results to 1000 rows maximum unless the question asks for a specific count
 - Use LOWER() for case-insensitive string comparisons
 - Database: {database}
+- SQL dialect: Trino (Amazon Athena). Use LIMIT not TOP. Use DATE_DIFF/DATE_TRUNC not DATEDIFF/DATEPART. Use CAST(x AS double) not CONVERT. No square-bracket identifiers.
 """
 
 
@@ -116,12 +117,13 @@ class NLToSQLCompiler:
         question: str,
         schema_context: dict[str, list[dict[str, Any]]],
         ontology_hints: list[dict[str, Any]] | None = None,
+        conversation_history: str | None = None,
     ) -> str:
         """
         Compile a natural language question to verified SQL.
         Returns verified SQL string ready for Athena execution.
         """
-        prompt = self._build_prompt(question, schema_context, ontology_hints or [])
+        prompt = self._build_prompt(question, schema_context, ontology_hints or [], conversation_history or "")
         raw_sql = self._call_bedrock(prompt)
         logger.debug(f"Raw LLM SQL: {raw_sql}")
 
@@ -140,16 +142,19 @@ class NLToSQLCompiler:
         question: str,
         schema_context: dict[str, list[dict[str, Any]]],
         ontology_hints: list[dict[str, Any]],
+        conversation_history: str = "",
     ) -> str:
         schema_str = json.dumps(schema_context, indent=2)
         hints_str = json.dumps(ontology_hints[:20], indent=2) if ontology_hints else "[]"
+
+        history_block = f"\n{conversation_history}\n" if conversation_history else ""
 
         return f"""Schema context (table -> columns):
 {schema_str}
 
 Ontology hints (natural language -> table/column mappings):
 {hints_str}
-
+{history_block}
 Question: {question}
 
 Generate a single SELECT SQL query to answer this question.

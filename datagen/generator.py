@@ -216,6 +216,18 @@ def generate_all(scale: str = "small") -> dict[str, pd.DataFrame]:
     print(f"  order:      {len(orders):,} rows")
     print(f"  order_line: {len(lines):,} rows")
 
+    # Enrich customers with aggregated order stats
+    spend_by_customer: dict[str, float] = {}
+    count_by_customer: dict[str, int] = {}
+    for o in orders:
+        cid = o["customer_id"]
+        spend_by_customer[cid] = round(spend_by_customer.get(cid, 0.0) + o["total_usd"], 2)
+        count_by_customer[cid] = count_by_customer.get(cid, 0) + 1
+    for c in customers:
+        cid = c["customer_id"]
+        c["lifetime_spend_usd"] = spend_by_customer.get(cid, 0.0)
+        c["total_orders"] = count_by_customer.get(cid, 0)
+
     return {
         "supplier": pd.DataFrame(suppliers),
         "menu_item": pd.DataFrame(menu_items),

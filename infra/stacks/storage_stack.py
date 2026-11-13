@@ -17,51 +17,21 @@ class StorageStack(cdk.Stack):
         for key, value in COMMON_TAGS.items():
             cdk.Tags.of(self).add(key, value)
 
-        lifecycle_rule = s3.LifecycleRule(
-            id="glacier-after-90-days",
-            transitions=[
-                s3.Transition(
-                    storage_class=s3.StorageClass.GLACIER,
-                    transition_after=cdk.Duration.days(90),
-                )
-            ],
+        # Reference existing buckets (created outside CDK before initial deploy)
+        self.raw_bucket = s3.Bucket.from_bucket_name(
+            self, "RawBucket", S3["raw_bucket"]
+        )
+        self.silver_bucket = s3.Bucket.from_bucket_name(
+            self, "SilverBucket", S3["silver_bucket"]
+        )
+        self.semantic_bucket = s3.Bucket.from_bucket_name(
+            self, "SemanticBucket", S3["semantic_bucket"]
+        )
+        self.audit_bucket = s3.Bucket.from_bucket_name(
+            self, "AuditBucket", S3["audit_bucket"]
         )
 
-        # Raw zone — incoming data before Iceberg conversion
-        self.raw_bucket = s3.Bucket(
-            self,
-            "RawBucket",
-            bucket_name=S3["raw_bucket"],
-            versioned=False,
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-            encryption=s3.BucketEncryption.S3_MANAGED,
-            removal_policy=cdk.RemovalPolicy.RETAIN,
-            lifecycle_rules=[lifecycle_rule],
-        )
-
-        # Silver zone — Iceberg tables (source of truth)
-        self.silver_bucket = s3.Bucket(
-            self,
-            "SilverBucket",
-            bucket_name=S3["silver_bucket"],
-            versioned=True,  # Iceberg needs consistent reads
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-            encryption=s3.BucketEncryption.S3_MANAGED,
-            removal_policy=cdk.RemovalPolicy.RETAIN,
-        )
-
-        # Semantic zone — ontology Iceberg tables
-        self.semantic_bucket = s3.Bucket(
-            self,
-            "SemanticBucket",
-            bucket_name=S3["semantic_bucket"],
-            versioned=False,
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-            encryption=s3.BucketEncryption.S3_MANAGED,
-            removal_policy=cdk.RemovalPolicy.RETAIN,
-        )
-
-        # Athena query results
+        # Athena query results — create if it doesn't exist
         self.athena_results_bucket = s3.Bucket(
             self,
             "AthenaResultsBucket",
@@ -76,17 +46,6 @@ class StorageStack(cdk.Stack):
                     expiration=cdk.Duration.days(30),
                 )
             ],
-        )
-
-        # Audit logs
-        self.audit_bucket = s3.Bucket(
-            self,
-            "AuditBucket",
-            bucket_name=S3["audit_bucket"],
-            versioned=False,
-            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
-            encryption=s3.BucketEncryption.S3_MANAGED,
-            removal_policy=cdk.RemovalPolicy.RETAIN,
         )
 
         # Outputs

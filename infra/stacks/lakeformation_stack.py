@@ -28,6 +28,8 @@ class LakeFormationStack(cdk.Stack):
             cdk.Tags.of(self).add(key, value)
 
         # ── Glue Databases ─────────────────────────────────────────────────────
+        # location_uri omitted — Iceberg tables define their own S3 location.
+        # S3 locations are pre-registered with LF manually using yumBurger-lf-s3-role.
         self.silver_db = glue.CfnDatabase(
             self,
             "SilverDatabase",
@@ -35,7 +37,6 @@ class LakeFormationStack(cdk.Stack):
             database_input=glue.CfnDatabase.DatabaseInputProperty(
                 name="yumburger_silver",
                 description="YumBurger Iceberg silver zone",
-                location_uri=f"s3://{silver_bucket_name}/silver/",
             ),
         )
 
@@ -46,24 +47,11 @@ class LakeFormationStack(cdk.Stack):
             database_input=glue.CfnDatabase.DatabaseInputProperty(
                 name="yumburger_semantic",
                 description="YumBurger semantic ontology zone",
-                location_uri=f"s3://{semantic_bucket_name}/semantic/",
             ),
         )
 
-        # ── Lake Formation — Register S3 locations ─────────────────────────────
-        self.silver_lf_location = lakeformation.CfnResource(
-            self,
-            "SilverLFLocation",
-            resource_arn=f"arn:aws:s3:::{silver_bucket_name}",
-            use_service_linked_role=True,
-        )
-
-        self.semantic_lf_location = lakeformation.CfnResource(
-            self,
-            "SemanticLFLocation",
-            resource_arn=f"arn:aws:s3:::{semantic_bucket_name}",
-            use_service_linked_role=True,
-        )
+        # NOTE: S3 locations registered manually with yumBurger-lf-s3-role (not SLR).
+        # SLR lacks S3 write credentials needed for Iceberg operations.
 
         # ── LF Permissions — connector-runtime: metadata only ─────────────────
         # connector-runtime can DESCRIBE tables (metadata plane) but not SELECT data

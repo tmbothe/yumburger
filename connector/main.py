@@ -27,6 +27,7 @@ from connector.audit import AuditPlane
 from connector.compiler import NLToSQLCompiler, CompilerError
 from connector.engines.athena import AthenaEngine
 from connector.identity import assume_persona_role
+from connector.memory import MemoryPlane
 from connector.metadata import MetadataPlane
 from connector.models import (
     AskResponse,
@@ -47,6 +48,7 @@ settings = get_settings()
 # Module-level singletons (initialized at startup)
 _audit: AuditPlane | None = None
 _compiler: NLToSQLCompiler | None = None
+_memory: MemoryPlane | None = None
 _metadata: MetadataPlane | None = None
 _ontology: OntologyPlane | None = None
 
@@ -57,10 +59,11 @@ _ontology_cache: list | None = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _audit, _compiler, _metadata, _ontology, _schema_cache, _ontology_cache
+    global _audit, _compiler, _memory, _metadata, _ontology, _schema_cache, _ontology_cache
     logger.info("Starting YumBurger connector...")
     _audit = AuditPlane()
     _compiler = NLToSQLCompiler()
+    _memory = MemoryPlane()
     runtime_session = boto3.Session(region_name=settings.aws_region)
     _metadata = MetadataPlane(runtime_session)
     _ontology = OntologyPlane(runtime_session)
@@ -213,21 +216,27 @@ def ask(req: QueryRequest) -> AskResponse:
     """
     Single-call endpoint for Bedrock Agents / Bodhi.
     Runs the full pipeline (NL→SQL→Athena→summarize) and returns a
-    natural language answer. One tool call — no multi-step exploration needed.
+    natural language answer. Pass session_id to maintain conversation context.
     """
     request_id = str(uuid.uuid4())
+    session_id = req.session_id or str(uuid.uuid4())
     start = time.monotonic()
 
-    # Run the same query pipeline as /query
     try:
+        # 1. Load conversation context from memory (non-blocking — empty on failure)
+        mem_ctx = _memory.get_context(session_id)
+        history_block = mem_ctx.to_prompt_block()
+
         schema_context = _schema_cache if _schema_cache is not None else _metadata.get_schema_summary()
         ontology_hints = _ontology_cache if _ontology_cache is not None else _ontology.get_all_mappings()
 
+        # 2. Compile NL → SQL, injecting conversation history for follow-up awareness
         try:
             compiled_sql = _compiler.compile(
                 question=req.question,
                 schema_context=schema_context,
                 ontology_hints=ontology_hints,
+                conversation_history=history_block,
             )
         except CompilerError as e:
             raise HTTPException(status_code=422, detail=f"Query compilation failed: {e}")
@@ -264,12 +273,14 @@ def ask(req: QueryRequest) -> AskResponse:
             success=True,
         )
 
-        # Summarize with Bedrock
+        # 3. Summarize with Bedrock, injecting conversation context for cohesive replies
         import boto3 as _boto3
         import json as _json
         _bedrock = _boto3.client("bedrock-runtime", region_name=settings.aws_region)
         rows_preview = _json.dumps(rows[:20], indent=2)
         summary_prompt = (
+            f"{history_block}\n\n" if history_block else ""
+        ) + (
             f"Question: {req.question}\n\n"
             f"SQL executed:\n{compiled_sql}\n\n"
             f"Results ({len(rows)} rows):\n{rows_preview}\n\n"
@@ -288,6 +299,16 @@ def ask(req: QueryRequest) -> AskResponse:
         )
         answer = _json.loads(llm_resp["body"].read())["content"][0]["text"]
 
+        # 4. Persist this turn to memory (non-blocking)
+        _memory.add_turn(
+            session_id=session_id,
+            persona=req.persona,
+            question=req.question,
+            answer=answer,
+            sql=compiled_sql,
+            row_count=len(rows),
+        )
+
         return AskResponse(
             request_id=request_id,
             question=req.question,
@@ -295,6 +316,7 @@ def ask(req: QueryRequest) -> AskResponse:
             compiled_sql=compiled_sql,
             row_count=len(rows),
             duration_ms=int((time.monotonic() - start) * 1000),
+            session_id=session_id,
         )
 
     except HTTPException:
