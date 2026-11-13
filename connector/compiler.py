@@ -46,6 +46,7 @@ Rules:
 - Database: {database}
 - SQL dialect: Trino (Amazon Athena). Use LIMIT not TOP. Use DATE_DIFF/DATE_TRUNC not DATEDIFF/DATEPART. Use CAST(x AS double) not CONVERT. No square-bracket identifiers.
 - GROUP BY rule: when using GROUP BY, every column in SELECT that is NOT inside an aggregate function (COUNT, SUM, AVG, MIN, MAX) MUST appear in the GROUP BY clause.
+- Never use SELECT * or alias.* with GROUP BY — always list the specific columns needed.
 """
 
 
@@ -93,11 +94,21 @@ class SQLVerifier:
         # must appear in GROUP BY when a GROUP BY clause is present.
         group = parsed.find(exp.Group)
         if group:
+            # Wildcards (SELECT * / SELECT alias.*) are incompatible with GROUP BY
+            for sel in parsed.expressions:
+                inner = sel.args.get("this") if isinstance(sel, exp.Alias) else sel
+                if isinstance(inner, exp.Star) or isinstance(inner, exp.Column) and isinstance(inner.args.get("this"), exp.Star):
+                    raise CompilerError(
+                        "SELECT * / alias.* cannot be used with GROUP BY — list columns explicitly"
+                    )
+            # Also reject alias.* in GROUP BY itself
+            for g in group.expressions:
+                if isinstance(g, exp.Star) or (isinstance(g, exp.Column) and isinstance(g.args.get("this"), exp.Star)):
+                    raise CompilerError(
+                        "alias.* is not valid in GROUP BY — list columns explicitly"
+                    )
             group_keys = {g.sql(dialect="trino").lower() for g in group.expressions}
             for sel in parsed.expressions:
-                # Skip wildcard
-                if isinstance(sel, exp.Star):
-                    continue
                 inner = sel.args.get("this") if isinstance(sel, exp.Alias) else sel
                 # Skip expressions that contain an aggregate function
                 if inner.find(exp.AggFunc):
