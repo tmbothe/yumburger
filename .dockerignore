@@ -13,7 +13,6 @@ lakehouse/
 ontology/
 tests/
 docs/
-assets/
 scripts/
 *.md
 Makefile

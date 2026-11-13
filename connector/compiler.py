@@ -45,6 +45,7 @@ Rules:
 - Use LOWER() for case-insensitive string comparisons
 - Database: {database}
 - SQL dialect: Trino (Amazon Athena). Use LIMIT not TOP. Use DATE_DIFF/DATE_TRUNC not DATEDIFF/DATEPART. Use CAST(x AS double) not CONVERT. No square-bracket identifiers.
+- GROUP BY rule: when using GROUP BY, every column in SELECT that is NOT inside an aggregate function (COUNT, SUM, AVG, MIN, MAX) MUST appear in the GROUP BY clause.
 """
 
 
@@ -87,6 +88,26 @@ class SQLVerifier:
                 raise CompilerError(f"Table not in allowlist: {table_name}")
 
         needs_limit = not parsed.find(exp.Limit)
+
+        # Check GROUP BY completeness: every non-aggregate SELECT expression
+        # must appear in GROUP BY when a GROUP BY clause is present.
+        group = parsed.find(exp.Group)
+        if group:
+            group_keys = {g.sql(dialect="trino").lower() for g in group.expressions}
+            for sel in parsed.expressions:
+                # Skip wildcard
+                if isinstance(sel, exp.Star):
+                    continue
+                inner = sel.args.get("this") if isinstance(sel, exp.Alias) else sel
+                # Skip expressions that contain an aggregate function
+                if inner.find(exp.AggFunc):
+                    continue
+                col_sql = inner.sql(dialect="trino").lower()
+                if col_sql not in group_keys:
+                    alias = sel.alias if isinstance(sel, exp.Alias) else col_sql
+                    raise CompilerError(
+                        f"Column '{alias}' in SELECT is not in GROUP BY clause"
+                    )
 
         # Regenerate SQL with proper quoting so reserved-word table names
         # (e.g. 'order') are double-quoted in the output.
