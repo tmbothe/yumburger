@@ -110,9 +110,21 @@ class SQLVerifier:
                 alias = (tbl_expr.alias or tbl_name).lower()
                 alias_to_table[alias] = tbl_name
 
+            # Collect SELECT-level aliases (e.g. SUM(...) AS total_revenue)
+            # so ORDER BY / HAVING references to them are not flagged as unknown columns.
+            select_aliases = {
+                sel.alias.lower()
+                for sel in parsed.expressions
+                if isinstance(sel, exp.Alias) and sel.alias
+            }
+
             for col in parsed.find_all(exp.Column):
                 col_name = col.name.lower()
                 if not col_name or col_name == "*":
+                    continue
+                # Skip unqualified references that match a SELECT alias
+                tbl_alias = col.table.lower() if col.table else None
+                if not tbl_alias and col_name in select_aliases:
                     continue
                 tbl_alias = col.table.lower() if col.table else None
                 if tbl_alias and tbl_alias in alias_to_table:
